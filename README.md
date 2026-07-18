@@ -1,9 +1,13 @@
 # Regret Radio
 
+[![CI](https://github.com/EzraCerpac/regret-radio/actions/workflows/ci.yml/badge.svg)](https://github.com/EzraCerpac/regret-radio/actions/workflows/ci.yml)
+
 Regret Radio is a static scientific web toy: two accepted optimization traces
 share one solver-work timeline, while a deterministic synthesizer turns each
 recorded decision into sound. It compares a one-switch-trained adaptive selector
 with closed-loop SBS. The radio metaphor is presentation, not a new metric.
+
+![Regret Radio playing the Overtake duel](docs/regret-radio.jpg)
 
 ## Run it
 
@@ -40,3 +44,7 @@ bun run check
 
 This runs TypeScript, unit tests, a production build, browser interaction tests,
 and deterministic evidence verification.
+
+GitHub Actions runs the public, self-contained subset with `bun run ci`. The
+raw thesis evidence is intentionally absent from the repository, so the
+build-time Julia re-export check remains local.

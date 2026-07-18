@@ -12,6 +12,7 @@
     "test:browser": "playwright test",
     "fixture:export": "julia --project=tools/exporter tools/exporter/export.jl",
     "fixture:verify": "julia --project=tools/exporter tools/exporter/export.jl --verify",
+    "ci": "bun run typecheck && bun run test && bun run build && bun run test:browser",
     "check": "bun run typecheck && bun run test && bun run build && bun run test:browser && bun run fixture:verify"
   },
   "dependencies": {
