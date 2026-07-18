@@ -1,0 +1,77 @@
+{
+  "studyId": "d8216a1028b7ba60bd8a6d3846ac6d74c146ffac18e7e6517da620e9f256a8d4",
+  "tracks": [
+    {
+      "id": "overtake",
+      "title": "Overtake",
+      "story": "SBS used 2.12× adaptive solver work.",
+      "instanceId": "68",
+      "seed": 11,
+      "fold": 2,
+      "expected": {
+        "adaptive": {"converged": true, "terminalReason": "converged", "solverPathWork": 280112, "decisionCount": 8, "switchCount": 1},
+        "baseline": {"converged": true, "terminalReason": "converged", "solverPathWork": 594921, "decisionCount": 17, "switchCount": 0}
+      }
+    },
+    {
+      "id": "wrong-turn",
+      "title": "Wrong turn",
+      "story": "Adaptive converged but used about 11.9× SBS solver work.",
+      "instanceId": "20",
+      "seed": 29,
+      "fold": 5,
+      "expected": {
+        "adaptive": {"converged": true, "terminalReason": "converged", "solverPathWork": 1503116, "decisionCount": 50, "switchCount": 11},
+        "baseline": {"converged": true, "terminalReason": "converged", "solverPathWork": 126317, "decisionCount": 3, "switchCount": 0}
+      }
+    },
+    {
+      "id": "switchboard",
+      "title": "Switchboard",
+      "story": "Adaptive switched 27 times and narrowly used less solver work.",
+      "instanceId": "82",
+      "seed": 101,
+      "fold": 1,
+      "expected": {
+        "adaptive": {"converged": true, "terminalReason": "converged", "solverPathWork": 853052, "decisionCount": 42, "switchCount": 27},
+        "baseline": {"converged": true, "terminalReason": "converged", "solverPathWork": 908840, "decisionCount": 18, "switchCount": 0}
+      }
+    },
+    {
+      "id": "uncertain-unison",
+      "title": "Uncertain unison",
+      "story": "High selector uncertainty ended in identical solver work.",
+      "instanceId": "86",
+      "seed": 71,
+      "fold": 3,
+      "expected": {
+        "adaptive": {"converged": true, "terminalReason": "converged", "solverPathWork": 111571, "decisionCount": 3, "switchCount": 0},
+        "baseline": {"converged": true, "terminalReason": "converged", "solverPathWork": 111571, "decisionCount": 3, "switchCount": 0}
+      }
+    },
+    {
+      "id": "escape",
+      "title": "Escape",
+      "story": "Adaptive converged; closed-loop SBS reached the step guard.",
+      "instanceId": "13",
+      "seed": 11,
+      "fold": 1,
+      "expected": {
+        "adaptive": {"converged": true, "terminalReason": "converged", "solverPathWork": 298811, "decisionCount": 8, "switchCount": 5},
+        "baseline": {"converged": false, "terminalReason": "step_guard", "solverPathWork": 2828705, "decisionCount": 236, "switchCount": 0}
+      }
+    },
+    {
+      "id": "stall",
+      "title": "Stall",
+      "story": "Closed-loop SBS converged; adaptive reached the step guard after 16 switches.",
+      "instanceId": "7",
+      "seed": 29,
+      "fold": 5,
+      "expected": {
+        "adaptive": {"converged": false, "terminalReason": "step_guard", "solverPathWork": 1513123, "decisionCount": 53, "switchCount": 16},
+        "baseline": {"converged": true, "terminalReason": "converged", "solverPathWork": 300142, "decisionCount": 7, "switchCount": 0}
+      }
+    }
+  ]
+}
