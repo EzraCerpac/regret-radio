@@ -9,6 +9,21 @@ with closed-loop SBS. The radio metaphor is presentation, not a new metric.
 
 ![Regret Radio playing the Overtake duel](docs/regret-radio.jpg)
 
+## Thesis context
+
+Regret Radio grew out of my master's thesis, *Adaptive Solver Selection for
+Nonlinear Problems using Deep Learning*, in Scientific Computing at TU Berlin.
+The thesis asks whether a learned selector can choose among optimization
+methods while solving nonlinear energy-minimization problems, using the current
+numerical state instead of committing to one solver for the whole trajectory.
+
+The adaptive lane is trained from a one-switch counterfactual target: an
+initial solver action is valued together with a fixed-action continuation.
+“One-switch-trained” describes that training signal, not a restriction on the
+selector at runtime. In these tracks the selector runs closed loop and is
+compared with a closed-loop single-best-solver baseline. Horizontal position
+measures recorded solver-path work, not wall-clock time.
+
 ## Run it
 
 ```sh
