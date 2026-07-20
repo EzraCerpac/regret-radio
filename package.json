@@ -18,13 +18,13 @@
   "dependencies": {
     "@fontsource-variable/anybody": "5.2.7",
     "@fontsource/ibm-plex-mono": "5.2.7",
-    "@fontsource/ibm-plex-sans": "5.2.7"
+    "@fontsource/ibm-plex-sans": "5.2.8"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
     "@types/node": "24.10.1",
     "typescript": "5.9.3",
-    "vite": "8.1.4",
+    "vite": "8.1.5",
     "vitest": "4.1.10"
   }
 }
