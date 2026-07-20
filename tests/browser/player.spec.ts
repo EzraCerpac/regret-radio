@@ -9,6 +9,15 @@ test("plays, seeks, switches tracks, explains, and restores URL state", async ({
   await expect(page).toHaveTitle("Regret Radio");
   await expect(page.getByRole("heading", { name: "Overtake" })).toBeVisible();
   await expect(page.locator("#track-select option")).toHaveCount(6);
+  await expect(page.locator("#transmission-index-body tr")).toHaveCount(6);
+  await expect(page.locator("#transmission-index")).toContainText(
+    "not a representative sample or statistical population",
+  );
+  const firstIndexRowHeight = await page
+    .locator("#transmission-index-body tr")
+    .first()
+    .evaluate((row) => row.getBoundingClientRect().height);
+  expect(firstIndexRowHeight).toBeLessThan(90);
 
   const needle = page.locator("#needle");
   const start = await needle.getAttribute("transform");
@@ -37,6 +46,21 @@ test("plays, seeks, switches tracks, explains, and restores URL state", async ({
   expect(consoleErrors).toEqual([]);
 });
 
+test("opens a curated story from the neutral transmission index", async ({ page }) => {
+  await page.goto("/?track=overtake&speed=1&at=0.50&explain=0");
+  const openStall = page.getByRole("button", { name: "Open Stall in player" });
+  await openStall.click();
+  await expect(page.getByRole("heading", { name: "Stall" })).toBeFocused();
+  await expect(page.locator("#track-select")).toHaveValue("stall");
+  await expect(page.locator("#position-readout")).toContainText("0%");
+  await expect(page).toHaveURL(/track=stall/);
+  await expect(page.locator(".transmission-row.is-current")).toContainText("Stall");
+  await expect(page.locator(".transmission-row.is-current .index-open")).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+});
+
 test("reports import errors and exports a deterministic WAV download", async ({ page }) => {
   await page.goto("/?track=uncertain-unison&speed=2&at=0.00&explain=0");
   await page.locator("#bundle-file").setInputFiles({
@@ -57,7 +81,15 @@ test("reports import errors and exports a deterministic WAV download", async ({ 
   await page.locator("#bundle-file").setInputFiles("src/data/bundle.json");
   await expect(page.locator("#status")).toContainText("Loaded 6 local tracks");
   await expect(page.locator("#track-select option")).toHaveCount(12);
+  await expect(page.locator("#transmission-index-body tr")).toHaveCount(12);
+  await expect(page.locator("#transmission-index-body .index-open[data-local='true']")).toHaveCount(
+    6,
+  );
+  await expect(page.locator(".transmission-row.is-current .index-source")).toContainText(
+    "Local import",
+  );
   await expect(page.getByRole("button", { name: "Share" })).toBeDisabled();
+  await expect(page).toHaveURL(/track=uncertain-unison/);
 });
 
 test("keeps the player readable on a narrow screen", async ({ page }) => {
@@ -69,6 +101,15 @@ test("keeps the player readable on a narrow screen", async ({ page }) => {
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(1);
+  const indexWidths = await page.locator(".transmission-index-scroll").evaluate((element) => ({
+    client: element.clientWidth,
+    scroll: element.scrollWidth,
+  }));
+  expect(indexWidths.scroll).toBeGreaterThan(indexWidths.client);
+  await expect(page.getByRole("button", { name: "Open Overtake in player" })).toHaveCSS(
+    "min-height",
+    "44px",
+  );
   await expect(page.getByRole("button", { name: /Listen/ })).toHaveCSS(
     "min-height",
     "44px",

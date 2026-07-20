@@ -40,6 +40,11 @@ The six bundled stories were exported from accepted closed-loop study
 The fixture contains only the public Regret Radio JSON contract: no absolute
 source paths and no thesis application code.
 
+The Transmission Index displays every loaded curated evidence story, including
+validated local imports, using only family, start kind, convergence,
+solver-path work, and recorded action switches. It is a catalog of selected
+stories, not a representative statistical population, ranking, or new metric.
+
 Regenerate or byte-verify the bundle:
 
 ```sh

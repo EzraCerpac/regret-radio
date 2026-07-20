@@ -45,7 +45,9 @@ button:focus-visible,
 select:focus-visible,
 summary:focus-visible,
 input:focus-visible,
-.decision-mark:focus-visible {
+.decision-mark:focus-visible,
+.index-open:focus-visible,
+#track-title:focus-visible {
   outline: 3px solid #fff;
   outline-offset: 3px;
   box-shadow: 0 0 0 5px var(--ink);
@@ -189,6 +191,228 @@ input:focus-visible,
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
+}
+
+.transmission-index {
+  padding: 22px 4px 0;
+  border-bottom: 1px solid rgb(23 36 45 / 0.28);
+}
+
+.transmission-index summary {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  cursor: pointer;
+}
+
+.index-heading {
+  font-family: "Anybody Variable", "Arial Black", sans-serif;
+  font-size: 1.65rem;
+  font-stretch: 115%;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+
+.index-count {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.index-intro {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding: 4px 0 16px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.index-intro p {
+  margin-bottom: 0;
+}
+
+.transmission-index-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.transmission-table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.transmission-table th,
+.transmission-table td {
+  padding: 11px 10px;
+  border-top: 1px solid rgb(23 36 45 / 0.13);
+  vertical-align: middle;
+  text-align: left;
+}
+
+.transmission-table thead th {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.67rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.transmission-table th:nth-child(1) {
+  width: 22%;
+}
+
+.transmission-table th:nth-child(2) {
+  width: 15%;
+}
+
+.transmission-table th:nth-child(3) {
+  width: 21%;
+}
+
+.transmission-table th:nth-child(4) {
+  width: 30%;
+}
+
+.transmission-table th:nth-child(5) {
+  width: 12%;
+}
+
+.transmission-row {
+  transition: background 140ms ease;
+}
+
+.transmission-row:hover,
+.transmission-row.is-current {
+  background: rgb(245 247 247 / 0.58);
+}
+
+.transmission-row.is-current > :first-child {
+  box-shadow: inset 3px 0 var(--brass);
+}
+
+.index-open {
+  display: grid;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 6px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.index-open > span {
+  align-self: end;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+
+.index-open:hover > span {
+  text-decoration-color: currentColor;
+}
+
+.index-open small,
+.transmission-table td > small {
+  display: block;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.66rem;
+  font-weight: 400;
+}
+
+.index-case {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.83rem;
+}
+
+.index-lane-pair,
+.index-work-pair,
+.index-switches {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+}
+
+.index-lane-pair > * + *,
+.index-work-pair > * + * {
+  margin-top: 7px;
+}
+
+.index-lane-status {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 4px;
+}
+
+.index-lane-status b,
+.index-work-lane b,
+.index-switches b {
+  font-weight: 500;
+}
+
+.index-outcome[data-converged="false"] {
+  font-weight: 500;
+}
+
+.index-work-lane {
+  display: grid;
+  grid-template-columns: 30px 68px 1fr;
+  gap: 5px;
+  align-items: center;
+}
+
+.index-work-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.index-work-rail {
+  position: relative;
+  height: 4px;
+  overflow: hidden;
+  background: rgb(23 36 45 / 0.12);
+  border-radius: 4px;
+}
+
+.index-work-rail i {
+  display: block;
+  width: var(--work-share);
+  height: 100%;
+}
+
+.index-work-rail .adaptive-work {
+  background: var(--gd);
+}
+
+.index-work-rail .baseline-work {
+  background: var(--newton);
+}
+
+.index-switches {
+  font-variant-numeric: tabular-nums;
+}
+
+.index-switches span {
+  display: block;
+}
+
+.index-switches span + span {
+  margin-top: 5px;
 }
 
 .hero {
@@ -779,6 +1003,20 @@ h3 {
     align-items: stretch;
   }
 
+  .transmission-index {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .index-intro {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .transmission-table {
+    min-width: 860px;
+  }
+
   .select-label {
     margin-bottom: -6px;
   }
@@ -857,4 +1095,3 @@ h3 {
     transform: none;
   }
 }
-

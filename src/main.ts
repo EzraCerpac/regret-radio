@@ -9,6 +9,12 @@ import rawBundle from "./data/bundle.json";
 import { AudioEngine, renderTrackWav } from "./audio";
 import { decisionAtFraction, residualProgress, sharedMaxWork, workFraction } from "./timeline";
 import {
+  buildTransmissionIndexRows,
+  familyLabel,
+  startKindLabel,
+  type TransmissionIndexRow,
+} from "./transmission-index";
+import {
   ACTION_META,
   type LaneId,
   type RegretRadioBundleV1,
@@ -38,11 +44,37 @@ app.innerHTML = `
     </header>
 
     <main>
-      <section class="hero" aria-labelledby="track-title">
+      <details id="transmission-index" class="transmission-index" open>
+        <summary>
+          <span class="index-heading">Transmission index</span>
+          <span id="transmission-index-count" class="index-count"></span>
+        </summary>
+        <div class="index-intro">
+          <p>Curated evidence stories from accepted runs. This index shows loaded cases, not a representative sample or statistical population.</p>
+          <p>Work means recorded solver-path work, not wall-clock time. Action switches count changes between consecutive recorded action IDs.</p>
+        </div>
+        <div class="transmission-index-scroll">
+          <table class="transmission-table">
+            <caption class="sr-only">Loaded curated evidence stories and their recorded evidence dimensions</caption>
+            <thead>
+              <tr>
+                <th scope="col">Story</th>
+                <th scope="col">Case</th>
+                <th scope="col">Convergence</th>
+                <th scope="col">Solver-path work</th>
+                <th scope="col">Switches</th>
+              </tr>
+            </thead>
+            <tbody id="transmission-index-body"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <section id="player" class="hero" aria-labelledby="track-title">
         <div class="track-heading">
           <div>
             <p id="track-kicker" class="kicker"></p>
-            <h1 id="track-title"></h1>
+            <h1 id="track-title" tabindex="-1"></h1>
             <p id="track-story" class="story"></p>
           </div>
           <div id="case-stamp" class="case-stamp" aria-label="Scientific case identity"></div>
@@ -198,6 +230,9 @@ function element<T extends HTMLElement | SVGElement>(id: string): T {
 }
 
 const trackSelect = element<HTMLSelectElement>("track-select");
+const transmissionIndexBody = element<HTMLTableSectionElement>("transmission-index-body");
+const transmissionIndexCount = element<HTMLSpanElement>("transmission-index-count");
+const player = element<HTMLElement>("player");
 const title = element<HTMLHeadingElement>("track-title");
 const kicker = element<HTMLParagraphElement>("track-kicker");
 const story = element<HTMLParagraphElement>("track-story");
@@ -232,16 +267,6 @@ let explicitMuted = new Set<LaneId>();
 let solo: LaneId | null = null;
 let animationFrame = 0;
 let lastFieldKey = "";
-
-function familyLabel(value: string): string {
-  const labels: Record<string, string> = {
-    allen_cahn: "Allen–Cahn",
-    p_laplace: "p-Laplace",
-    min_surface: "minimal surface",
-    semilinear: "semilinear",
-  };
-  return labels[value] ?? value.replaceAll("_", " ");
-}
 
 function formatWork(value: number): string {
   return Math.round(value).toLocaleString("en-US");
@@ -488,6 +513,84 @@ function renderTrackOptions(): void {
   trackSelect.value = currentTrack.id;
 }
 
+function laneConvergenceMarkup(label: string, converged: boolean, terminalReason: string): string {
+  const detail = converged ? "Converged" : `Did not converge · ${terminalReason.replaceAll("_", " ")}`;
+  return `
+    <span class="index-lane-status">
+      <b>${label}</b>
+      <span class="index-outcome" data-converged="${converged}">${escapeHtml(detail)}</span>
+    </span>`;
+}
+
+function workLaneMarkup(
+  label: string,
+  className: string,
+  work: number,
+  maxWork: number,
+): string {
+  const share = Math.max(0, Math.min(100, (work / maxWork) * 100));
+  return `
+    <span class="index-work-lane">
+      <b>${label}</b>
+      <span class="index-work-value">${formatWork(work)}</span>
+      <span class="index-work-rail" aria-hidden="true">
+        <i class="${className}" style="--work-share:${share.toFixed(2)}%"></i>
+      </span>
+    </span>`;
+}
+
+function transmissionRowMarkup(row: TransmissionIndexRow): string {
+  const { track } = row;
+  const local = localTrackIds.has(track.id);
+  const source = sourceByTrack.get(track.id) ?? initialBundle.payload.source;
+  const current = track.id === currentTrack.id;
+  return `
+    <tr class="transmission-row${current ? " is-current" : ""}" data-track-id="${escapeHtml(track.id)}">
+      <th scope="row">
+        <button
+          class="index-open"
+          type="button"
+          data-track-id="${escapeHtml(track.id)}"
+          data-local="${local}"
+          aria-current="${current ? "true" : "false"}"
+          aria-label="${escapeHtml(`Open ${track.title} in player`)}"
+        >
+          <span>${escapeHtml(track.title)}</span>
+          <small class="index-source">${local ? "Local import" : "Bundled"} · study ${escapeHtml(source.studyId.slice(0, 8))}…</small>
+        </button>
+      </th>
+      <td>
+        <span class="index-case">${escapeHtml(row.family)}</span>
+        <small>${escapeHtml(row.startKind)}</small>
+      </td>
+      <td class="index-lane-pair">
+        ${laneConvergenceMarkup("A", track.adaptive.converged, track.adaptive.terminalReason)}
+        ${laneConvergenceMarkup("SBS", track.baseline.converged, track.baseline.terminalReason)}
+      </td>
+      <td class="index-work-pair">
+        ${workLaneMarkup("A", "adaptive-work", track.adaptive.solverPathWork, row.maxWork)}
+        ${workLaneMarkup("SBS", "baseline-work", track.baseline.solverPathWork, row.maxWork)}
+      </td>
+      <td class="index-switches">
+        <span><b>A</b> ${row.adaptiveSwitches}</span>
+        <span><b>SBS</b> ${row.baselineSwitches}</span>
+      </td>
+    </tr>`;
+}
+
+function renderTransmissionIndex(): void {
+  transmissionIndexCount.textContent = `${tracks.length} ${tracks.length === 1 ? "story" : "stories"}`;
+  transmissionIndexBody.innerHTML = buildTransmissionIndexRows(tracks)
+    .map(transmissionRowMarkup)
+    .join("");
+  transmissionIndexBody.querySelectorAll<HTMLButtonElement>(".index-open").forEach((button) => {
+    button.addEventListener("click", () => {
+      const selected = tracks.find((track) => track.id === button.dataset.trackId);
+      if (selected) selectTrack(selected, true);
+    });
+  });
+}
+
 function renderMuteControls(): void {
   for (const lane of ["adaptive", "baseline"] as const) {
     const mute = element<HTMLButtonElement>(`mute-${lane}`);
@@ -501,7 +604,7 @@ function renderTrack(): void {
   selectedDecision = null;
   lastFieldKey = "";
   title.textContent = currentTrack.title;
-  kicker.textContent = `${familyLabel(currentTrack.family)} · ${currentTrack.startKind.replaceAll("_", " ")}`;
+  kicker.textContent = `${familyLabel(currentTrack.family)} · ${startKindLabel(currentTrack.startKind)}`;
   story.textContent = outcomeLabel(currentTrack);
   caseStamp.innerHTML = `
     <span>instance ${escapeHtml(currentTrack.instanceId)}</span>
@@ -521,6 +624,24 @@ function renderTrack(): void {
   element<HTMLElement>("selector-run").textContent = source.selectorArtifactRunId;
   shareButton.disabled = localTrackIds.has(currentTrack.id);
   updatePosition();
+}
+
+function selectTrack(selected: RegretRadioTrackV1, fromIndex = false): void {
+  pause();
+  currentTrack = selected;
+  fraction = 0;
+  renderTrackOptions();
+  renderTrack();
+  renderTransmissionIndex();
+  updateUrl();
+  setStatus(fromIndex ? `Opened ${selected.title} in the synchronized player.` : "");
+  if (fromIndex) {
+    player.scrollIntoView({
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+    title.focus({ preventScroll: true });
+  }
 }
 
 function updatePosition(): void {
@@ -633,14 +754,9 @@ speedSelect.addEventListener("change", async () => {
 });
 
 trackSelect.addEventListener("change", () => {
-  pause();
   const selected = tracks.find((track) => track.id === trackSelect.value);
   if (!selected) return;
-  currentTrack = selected;
-  fraction = 0;
-  renderTrack();
-  updateUrl();
-  setStatus("");
+  selectTrack(selected);
 });
 
 for (const lane of ["adaptive", "baseline"] as const) {
@@ -723,6 +839,7 @@ bundleFile.addEventListener("change", async () => {
     pause();
     renderTrackOptions();
     renderTrack();
+    renderTransmissionIndex();
     setStatus(`Loaded ${importedTracks.length} local track${importedTracks.length === 1 ? "" : "s"}. Local evidence is not put in the URL.`);
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Could not read this bundle.", true);
@@ -740,4 +857,5 @@ document.addEventListener("visibilitychange", () => {
 
 loadUrlState();
 renderTrackOptions();
+renderTransmissionIndex();
 renderTrack();
