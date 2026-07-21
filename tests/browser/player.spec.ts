@@ -6,18 +6,16 @@ test("plays, seeks, switches tracks, explains, and restores URL state", async ({
     if (message.type() === "error") consoleErrors.push(message.text());
   });
   await page.goto("/?track=overtake&speed=1&at=0.00&explain=0");
-  await expect(page).toHaveTitle("Regret Radio");
+  await expect(page).toHaveTitle("Regret Radio — Solver Selection You Can Hear");
   await expect(page.getByRole("heading", { name: "Overtake" })).toBeVisible();
+  await expect(page.locator("#track-story")).toBeVisible();
+  await expect(page.locator("#track-outcome")).toBeVisible();
   await expect(page.locator("#track-select option")).toHaveCount(6);
   await expect(page.locator("#transmission-index-body tr")).toHaveCount(6);
+  await expect(page.locator("#transmission-index")).not.toHaveAttribute("open", "");
   await expect(page.locator("#transmission-index")).toContainText(
     "not a representative sample or statistical population",
   );
-  const firstIndexRowHeight = await page
-    .locator("#transmission-index-body tr")
-    .first()
-    .evaluate((row) => row.getBoundingClientRect().height);
-  expect(firstIndexRowHeight).toBeLessThan(90);
 
   const needle = page.locator("#needle");
   const start = await needle.getAttribute("transform");
@@ -48,6 +46,7 @@ test("plays, seeks, switches tracks, explains, and restores URL state", async ({
 
 test("opens a curated story from the neutral transmission index", async ({ page }) => {
   await page.goto("/?track=overtake&speed=1&at=0.50&explain=0");
+  await page.locator("#transmission-index > summary").click();
   const openStall = page.getByRole("button", { name: "Open Stall in player" });
   await openStall.click();
   await expect(page.getByRole("heading", { name: "Stall" })).toBeFocused();
@@ -63,6 +62,15 @@ test("opens a curated story from the neutral transmission index", async ({ page 
 
 test("reports import errors and exports a deterministic WAV download", async ({ page }) => {
   await page.goto("/?track=uncertain-unison&speed=2&at=0.00&explain=0");
+  await page.getByText("Advanced import", { exact: true }).click();
+  await expect(
+    page.getByText("Files stay in this tab, are never uploaded, and disappear on reload."),
+  ).toBeVisible();
+  await expect(
+    page.getByText("A matching digest proves data consistency, not authorship.", {
+      exact: false,
+    }),
+  ).toBeVisible();
   await page.locator("#bundle-file").setInputFiles({
     name: "broken.json",
     mimeType: "application/json",
@@ -79,20 +87,112 @@ test("reports import errors and exports a deterministic WAV download", async ({ 
   await expect(page.locator("#status")).toContainText("Exported");
 
   await page.locator("#bundle-file").setInputFiles("src/data/bundle.json");
-  await expect(page.locator("#status")).toContainText("Loaded 6 local tracks");
+  await expect(page.locator("#status")).toContainText(
+    "Loaded 6 local tracks as unverified local imports",
+  );
   await expect(page.locator("#track-select option")).toHaveCount(12);
+  await expect(page.locator("#track-select option:checked")).toContainText(
+    "Unverified local import",
+  );
   await expect(page.locator("#transmission-index-body tr")).toHaveCount(12);
   await expect(page.locator("#transmission-index-body .index-open[data-local='true']")).toHaveCount(
     6,
   );
   await expect(page.locator(".transmission-row.is-current .index-source")).toContainText(
-    "Local import",
+    "Unverified local import",
   );
   await expect(page.getByRole("button", { name: "Share" })).toBeDisabled();
   await expect(page).toHaveURL(/track=uncertain-unison/);
+
+  await page.getByRole("button", { name: "How this sound works" }).click();
+  await expect(page.locator("#provenance-heading")).toHaveText("Unverified local import");
+  await expect(page.locator("#provenance-status")).toContainText(
+    "digest proves data consistency, not authorship",
+  );
 });
 
-test("keeps the player readable on a narrow screen", async ({ page }) => {
+test("rejects files over 10 MiB before reading them", async ({ page }) => {
+  await page.addInitScript(() => {
+    const testWindow = window as unknown as Window & { __fileTextReads: number };
+    testWindow.__fileTextReads = 0;
+    const originalText = File.prototype.text;
+    File.prototype.text = function () {
+      testWindow.__fileTextReads += 1;
+      return originalText.call(this);
+    };
+  });
+  await page.goto("/");
+  await page.locator("#bundle-file").setInputFiles({
+    name: "too-large.json",
+    mimeType: "application/json",
+    buffer: Buffer.alloc(10 * 1024 * 1024 + 1, 32),
+  });
+
+  await expect(page.locator("#status")).toHaveText("file: maximum size is 10MB");
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as Window & { __fileTextReads: number }).__fileTextReads,
+    ),
+  ).toBe(0);
+});
+
+test("sanitizes generated share state", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async () => undefined },
+    });
+  });
+  await page.goto(
+    "/?track=overtake&speed=1&at=0.37&explain=0&utm_source=private&debug=1#decision",
+  );
+  await page.getByRole("button", { name: "Share" }).click();
+  await expect(page.locator("#status")).toHaveText("Share link copied.");
+
+  const url = new URL(page.url());
+  expect([...url.searchParams.keys()]).toEqual(["track", "speed", "at", "explain"]);
+  expect(url.searchParams.get("track")).toBe("overtake");
+  expect(url.searchParams.get("speed")).toBe("1");
+  expect(url.searchParams.get("at")).toBe("0.37");
+  expect(url.searchParams.get("explain")).toBe("0");
+  expect(url.hash).toBe("");
+});
+
+test("uses one roving score tab stop and announces explicit keyboard selections", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const adaptiveMarks = page.locator('.decision-mark[data-lane="adaptive"]');
+  await expect(page.locator('.decision-mark[tabindex="0"]')).toHaveCount(1);
+  await adaptiveMarks.first().focus();
+  await expect(adaptiveMarks.first()).toBeFocused();
+  await expect(page.locator("#decision-live")).toBeEmpty();
+
+  await page.keyboard.press("End");
+  await expect(adaptiveMarks.last()).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(adaptiveMarks.first()).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(adaptiveMarks.nth(1)).toBeFocused();
+  await expect(page.locator('.decision-mark[tabindex="0"]')).toHaveCount(1);
+
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#decision-live")).toContainText(
+    "Adaptive selector, decision 2",
+  );
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Space");
+  await expect(page.locator("#decision-live")).toContainText(
+    "Adaptive selector, decision 1",
+  );
+
+  await page.getByRole("button", { name: "Previous decision" }).click();
+  await expect(page.locator("#decision-live")).toContainText("Closed-loop SBS");
+});
+
+test("keeps decision controls and full evidence readable on a narrow screen", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
@@ -101,17 +201,40 @@ test("keeps the player readable on a narrow screen", async ({ page }) => {
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(1);
-  const indexWidths = await page.locator(".transmission-index-scroll").evaluate((element) => ({
-    client: element.clientWidth,
-    scroll: element.scrollWidth,
-  }));
-  expect(indexWidths.scroll).toBeGreaterThan(indexWidths.client);
-  await expect(page.getByRole("button", { name: "Open Overtake in player" })).toHaveCSS(
-    "min-height",
-    "44px",
+  await page.getByText("Decision transcript", { exact: true }).click();
+  const firstTranscriptRow = page.locator("#transcript li").first();
+  await expect(firstTranscriptRow.locator("span")).toHaveCount(4);
+  await expect(firstTranscriptRow.locator("span").last()).toBeVisible();
+  await expect(firstTranscriptRow.locator("span").last()).toContainText("residual");
+
+  const touchControls = page.locator(
+    "#mute-adaptive, #solo-adaptive, #mute-baseline, #solo-baseline, #previous-decision, #next-decision",
   );
-  await expect(page.getByRole("button", { name: /Listen/ })).toHaveCSS(
-    "min-height",
-    "44px",
-  );
+  await expect(touchControls).toHaveCount(6);
+  for (let index = 0; index < (await touchControls.count()); index += 1) {
+    const size = await touchControls.nth(index).evaluate((element) => ({
+      width: element.getBoundingClientRect().width,
+      height: element.getBoundingClientRect().height,
+    }));
+    expect(size.width).toBeGreaterThanOrEqual(44);
+    expect(size.height).toBeGreaterThanOrEqual(44);
+  }
+
+  await page.locator("#transmission-index > summary").click();
+  await expect(page.locator(".transmission-index-scroll")).toBeHidden();
+  await expect(page.locator("#transmission-index-cards")).toBeVisible();
+  await expect(page.locator(".transmission-card")).toHaveCount(6);
+  await expect(page.locator(".transmission-card").first().locator("dt")).toHaveText([
+    "Case",
+    "Convergence",
+    "Solver-path work",
+    "Switches",
+  ]);
+  const facts = page.locator(".transmission-card").first().locator(".transmission-card-fact dd");
+  await expect(facts).toHaveCount(4);
+  for (let index = 0; index < (await facts.count()); index += 1) {
+    expect((await facts.nth(index).innerText()).trim()).not.toBe("");
+  }
+  await expect(page.locator(".transmission-card").first()).toContainText("A");
+  await expect(page.locator(".transmission-card").first()).toContainText("SBS");
 });

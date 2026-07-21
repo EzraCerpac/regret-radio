@@ -1,7 +1,8 @@
 import { stableStringify, sha256Hex } from "./canonical";
 import { ACTION_IDS, type RegretRadioBundleV1, type RegretRadioDecisionV1 } from "./types";
 
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
+export const MAX_BUNDLE_FILE_BYTES = 10 * 1024 * 1024;
+export const MAX_FIELD_VALUES = 4_096;
 const MAX_TRACKS = 50;
 const MAX_DECISIONS = 5_000;
 
@@ -48,6 +49,9 @@ function validateDecision(value: unknown, path: string): RegretRadioDecisionV1 {
     validatedProbabilities[key] = probability;
   }
   if (!Array.isArray(item.field) || item.field.length < 2) fail(`${path}.field`, "expected at least two values");
+  if (item.field.length > MAX_FIELD_VALUES) {
+    fail(`${path}.field`, `maximum is ${MAX_FIELD_VALUES.toLocaleString("en-US")} values`);
+  }
   const field = item.field.map((entry, index) => number(entry, `${path}.field[${index}]`));
   return {
     index: integer(item.index, `${path}.index`),
@@ -94,7 +98,7 @@ export async function validateBundle(
   raw: unknown,
   options: { verifyDigest?: boolean; sourceBytes?: number } = {},
 ): Promise<RegretRadioBundleV1> {
-  if ((options.sourceBytes ?? 0) > MAX_FILE_BYTES) fail("file", "maximum size is 10MB");
+  if ((options.sourceBytes ?? 0) > MAX_BUNDLE_FILE_BYTES) fail("file", "maximum size is 10MB");
   const root = record(raw, "bundle");
   if (root.kind !== "regret-radio-bundle") fail("bundle.kind", "expected regret-radio-bundle");
   if (root.schemaVersion !== 1) fail("bundle.schemaVersion", "only schema version 1 is supported");

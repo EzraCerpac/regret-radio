@@ -1,8 +1,7 @@
-import "@fontsource-variable/anybody";
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/500.css";
-import "@fontsource/ibm-plex-mono/400.css";
-import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/ibm-plex-sans/latin-400.css";
+import "@fontsource/ibm-plex-sans/latin-500.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-mono/latin-500.css";
 import "./styles.css";
 
 import rawBundle from "./data/bundle.json";
@@ -21,7 +20,7 @@ import {
   type RegretRadioDecisionV1,
   type RegretRadioTrackV1,
 } from "./types";
-import { validateBundle } from "./validate";
+import { MAX_BUNDLE_FILE_BYTES, validateBundle } from "./validate";
 
 type SelectedDecision = { lane: LaneId; decision: RegretRadioDecisionV1 };
 
@@ -30,6 +29,7 @@ if (!app) throw new Error("Missing #app.");
 
 app.innerHTML = `
   <div class="app-shell">
+    <a class="skip-link" href="#player">Skip to the player</a>
     <header class="masthead">
       <a class="brand" href="./" aria-label="Regret Radio home">
         <span class="brand-main">REGRET</span>
@@ -44,38 +44,18 @@ app.innerHTML = `
     </header>
 
     <main>
-      <details id="transmission-index" class="transmission-index" open>
-        <summary>
-          <span class="index-heading">Transmission index</span>
-          <span id="transmission-index-count" class="index-count"></span>
-        </summary>
-        <div class="index-intro">
-          <p>Curated evidence stories from accepted runs. This index shows loaded cases, not a representative sample or statistical population.</p>
-          <p>Work means recorded solver-path work, not wall-clock time. Action switches count changes between consecutive recorded action IDs.</p>
-        </div>
-        <div class="transmission-index-scroll">
-          <table class="transmission-table">
-            <caption class="sr-only">Loaded curated evidence stories and their recorded evidence dimensions</caption>
-            <thead>
-              <tr>
-                <th scope="col">Story</th>
-                <th scope="col">Case</th>
-                <th scope="col">Convergence</th>
-                <th scope="col">Solver-path work</th>
-                <th scope="col">Switches</th>
-              </tr>
-            </thead>
-            <tbody id="transmission-index-body"></tbody>
-          </table>
-        </div>
-      </details>
-
-      <section id="player" class="hero" aria-labelledby="track-title">
+      <section id="player" class="hero" tabindex="-1" aria-labelledby="track-title">
+        <p id="player-orientation" class="player-orientation">
+          Listen to two recorded solver paths on one shared work timeline, then inspect the decisions behind the sound.
+        </p>
         <div class="track-heading">
           <div>
             <p id="track-kicker" class="kicker"></p>
             <h1 id="track-title" tabindex="-1"></h1>
-            <p id="track-story" class="story"></p>
+            <div class="track-narrative">
+              <p class="story"><span class="narrative-label">Curated story</span><span id="track-story"></span></p>
+              <p class="track-outcome"><span class="narrative-label">Computed outcome</span><span id="track-outcome"></span></p>
+            </div>
           </div>
           <div id="case-stamp" class="case-stamp" aria-label="Scientific case identity"></div>
         </div>
@@ -95,7 +75,7 @@ app.innerHTML = `
               <button id="solo-baseline" class="mini-button" type="button" aria-pressed="false">Solo</button>
             </div>
           </div>
-          <svg id="score" class="score" viewBox="0 0 1000 355" role="img" aria-labelledby="score-title score-desc">
+          <svg id="score" class="score" viewBox="0 0 1000 355" role="group" aria-labelledby="score-title score-desc">
             <title id="score-title">Solver decisions across shared solver work</title>
             <desc id="score-desc">Two aligned lanes compare adaptive selector decisions with a closed-loop single-best-solver baseline.</desc>
           </svg>
@@ -103,6 +83,12 @@ app.innerHTML = `
             <span>0</span>
             <span>solver-path work</span>
             <span id="max-work"></span>
+          </div>
+
+          <div id="decision-navigation" class="decision-navigation" role="group" aria-label="Recorded decision navigation">
+            <button id="previous-decision" class="button decision-nav-button" type="button" aria-describedby="decision-navigation-label">Previous decision</button>
+            <span id="decision-navigation-label" class="decision-navigation-label"></span>
+            <button id="next-decision" class="button decision-nav-button" type="button" aria-describedby="decision-navigation-label">Next decision</button>
           </div>
 
           <div class="field-scope">
@@ -113,7 +99,8 @@ app.innerHTML = `
             <svg id="field-view" viewBox="0 0 1000 126" role="img" aria-label="Discrete field states at the current solver-work position"></svg>
           </div>
 
-          <div id="inspector" class="inspector" aria-live="polite"></div>
+          <div id="inspector" class="inspector"></div>
+          <p id="decision-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
         </div>
 
         <div class="transport">
@@ -159,15 +146,46 @@ app.innerHTML = `
           <div class="import-row">
             <label class="button file-button" for="bundle-file">Choose Regret Radio JSON</label>
             <input id="bundle-file" type="file" accept="application/json,.json">
-            <span>Raw thesis CSV and JLD2 files are intentionally not accepted.</span>
+            <div class="import-copy">
+              <p>Files stay in this tab, are never uploaded, and disappear on reload.</p>
+              <p>A matching digest proves data consistency, not authorship. Raw thesis CSV and JLD2 files are intentionally not accepted.</p>
+            </div>
           </div>
         </details>
       </section>
+
+      <details id="transmission-index" class="transmission-index">
+        <summary>
+          <span class="index-heading">Transmission index</span>
+          <span id="transmission-index-count" class="index-count"></span>
+        </summary>
+        <div class="index-intro">
+          <p>Curated evidence stories from accepted runs. This index shows loaded cases, not a representative sample or statistical population.</p>
+          <p>Work means recorded solver-path work, not wall-clock time. Action switches count changes between consecutive recorded action IDs.</p>
+        </div>
+        <div class="transmission-index-scroll">
+          <table class="transmission-table">
+            <caption class="sr-only">Loaded curated evidence stories and their recorded evidence dimensions</caption>
+            <thead>
+              <tr>
+                <th scope="col">Story</th>
+                <th scope="col">Case</th>
+                <th scope="col">Convergence</th>
+                <th scope="col">Solver-path work</th>
+                <th scope="col">Switches</th>
+              </tr>
+            </thead>
+            <tbody id="transmission-index-body"></tbody>
+          </table>
+        </div>
+        <div id="transmission-index-cards" class="transmission-index-cards" role="list" aria-label="Loaded evidence stories"></div>
+      </details>
     </main>
 
     <footer class="footer">
       <p>Regret Radio is a metaphor. Evidence uses solver-path work, not wall-clock time.</p>
       <p id="provenance-short"></p>
+      <p><a id="source-repository" href="https://github.com/EzraCerpac/regret-radio">Source code on GitHub</a></p>
     </footer>
   </div>
 
@@ -212,7 +230,8 @@ app.innerHTML = `
       </section>
     </div>
     <div class="provenance-block">
-      <h3>Accepted evidence</h3>
+      <h3 id="provenance-heading">Accepted evidence</h3>
+      <p id="provenance-status" class="provenance-status"></p>
       <dl>
         <div><dt>Study</dt><dd id="study-id"></dd></div>
         <div><dt>Benchmark digest</dt><dd id="benchmark-digest"></dd></div>
@@ -231,11 +250,13 @@ function element<T extends HTMLElement | SVGElement>(id: string): T {
 
 const trackSelect = element<HTMLSelectElement>("track-select");
 const transmissionIndexBody = element<HTMLTableSectionElement>("transmission-index-body");
+const transmissionIndexCards = element<HTMLDivElement>("transmission-index-cards");
 const transmissionIndexCount = element<HTMLSpanElement>("transmission-index-count");
 const player = element<HTMLElement>("player");
 const title = element<HTMLHeadingElement>("track-title");
 const kicker = element<HTMLParagraphElement>("track-kicker");
-const story = element<HTMLParagraphElement>("track-story");
+const story = element<HTMLSpanElement>("track-story");
+const outcome = element<HTMLSpanElement>("track-outcome");
 const caseStamp = element<HTMLDivElement>("case-stamp");
 const score = element<SVGSVGElement>("score");
 const fieldView = element<SVGSVGElement>("field-view");
@@ -253,6 +274,12 @@ const positionReadout = element<HTMLSpanElement>("position-readout");
 const bundleFile = element<HTMLInputElement>("bundle-file");
 const shareButton = element<HTMLButtonElement>("share-button");
 const wavButton = element<HTMLButtonElement>("wav-button");
+const previousDecisionButton = element<HTMLButtonElement>("previous-decision");
+const nextDecisionButton = element<HTMLButtonElement>("next-decision");
+const decisionNavigationLabel = element<HTMLSpanElement>("decision-navigation-label");
+const decisionLive = element<HTMLParagraphElement>("decision-live");
+const provenanceHeading = element<HTMLHeadingElement>("provenance-heading");
+const provenanceStatus = element<HTMLParagraphElement>("provenance-status");
 
 const engine = new AudioEngine();
 const initialBundle = await validateBundle(rawBundle, { verifyDigest: true });
@@ -263,6 +290,7 @@ let currentTrack = tracks[0]!;
 let speed = 1;
 let fraction = 0;
 let selectedDecision: SelectedDecision | null = null;
+let rovingDecision: { lane: LaneId; index: number } = { lane: "adaptive", index: 0 };
 let explicitMuted = new Set<LaneId>();
 let solo: LaneId | null = null;
 let animationFrame = 0;
@@ -318,7 +346,7 @@ function shapeMarkup(
     class="decision-mark"
     data-lane="${lane}"
     data-index="${decision.index}"
-    tabindex="0"
+    tabindex="${rovingDecision.lane === lane && rovingDecision.index === decision.index ? "0" : "-1"}"
     role="button"
     aria-label="${escapeHtml(`${lane}, decision ${decision.index + 1}, ${meta.label}, work ${formatWork(decision.cumulativeWork)}, residual ${formatResidual(decision.residual)}`)}"
     fill="${meta.color}"
@@ -373,6 +401,8 @@ function laneMarkup(track: RegretRadioTrackV1, lane: LaneId, laneY: number): str
 function renderScore(): void {
   const needleX = 92 + fraction * 858;
   score.innerHTML = `
+    <title id="score-title">Solver decisions across shared solver work</title>
+    <desc id="score-desc">Two aligned lanes compare adaptive selector decisions with a closed-loop single-best-solver baseline.</desc>
     <defs>
       <filter id="needle-glow" x="-80%" y="-20%" width="260%" height="140%">
         <feGaussianBlur stdDeviation="2.5" result="blur"></feGaussianBlur>
@@ -393,20 +423,119 @@ function renderScore(): void {
     const index = Number(mark.dataset.index);
     const decision = currentTrack[lane].decisions[index];
     if (!decision) return;
-    const select = () => {
-      selectedDecision = { lane, decision };
-      renderInspector();
-    };
-    mark.addEventListener("pointerenter", select);
-    mark.addEventListener("focus", select);
-    mark.addEventListener("click", () => {
-      pause();
-      fraction = workFraction(currentTrack, decision.cumulativeWork);
-      scrubber.value = String(Math.round(fraction * 1000));
-      updatePosition();
-      select();
-    });
+    mark.addEventListener("pointerenter", () => renderInspector({ lane, decision }));
+    mark.addEventListener("focus", () => previewDecision(lane, index));
+    mark.addEventListener("click", () => activateDecision(lane, index, true));
+    mark.addEventListener("keydown", (event) => handleDecisionKeydown(event, lane, index));
   });
+  updateDecisionNavigation();
+}
+
+function decisionMark(lane: LaneId, index: number): SVGElement | null {
+  return score.querySelector<SVGElement>(`.decision-mark[data-lane="${lane}"][data-index="${index}"]`);
+}
+
+function updateRovingTabStops(): void {
+  score.querySelectorAll<SVGElement>(".decision-mark").forEach((mark) => {
+    const active = mark.dataset.lane === rovingDecision.lane && Number(mark.dataset.index) === rovingDecision.index;
+    mark.setAttribute("tabindex", active ? "0" : "-1");
+  });
+}
+
+function updateDecisionNavigation(): void {
+  const trace = currentTrack[rovingDecision.lane];
+  const index = Math.min(Math.max(rovingDecision.index, 0), trace.decisions.length - 1);
+  rovingDecision = { lane: rovingDecision.lane, index };
+  const ordered = orderedDecisions();
+  const orderedIndex = ordered.findIndex(
+    (item) => item.lane === rovingDecision.lane && item.index === rovingDecision.index,
+  );
+  const laneLabel = rovingDecision.lane === "adaptive" ? "Adaptive" : "SBS";
+  decisionNavigationLabel.textContent = `${laneLabel} decision ${index + 1} of ${trace.decisions.length} · ${orderedIndex + 1} of ${ordered.length} overall`;
+  previousDecisionButton.disabled = orderedIndex <= 0;
+  nextDecisionButton.disabled = orderedIndex === ordered.length - 1;
+}
+
+function previewDecision(lane: LaneId, index: number): void {
+  const decision = currentTrack[lane].decisions[index];
+  if (!decision) return;
+  rovingDecision = { lane, index };
+  updateRovingTabStops();
+  updateDecisionNavigation();
+  renderInspector({ lane, decision });
+}
+
+function orderedDecisions(): Array<SelectedDecision & { index: number }> {
+  return (["adaptive", "baseline"] as const)
+    .flatMap((lane) => currentTrack[lane].decisions.map((decision, index) => ({ lane, index, decision })))
+    .sort(
+      (left, right) =>
+        left.decision.cumulativeWork - right.decision.cumulativeWork ||
+        (left.lane === right.lane ? left.index - right.index : left.lane === "adaptive" ? -1 : 1),
+    );
+}
+
+function decisionAnnouncement(lane: LaneId, decision: RegretRadioDecisionV1): string {
+  const laneLabel = lane === "adaptive" ? "Adaptive selector" : "Closed-loop SBS";
+  return `${laneLabel}, decision ${decision.index + 1}, ${ACTION_META[decision.actionId].label}, work ${formatWork(decision.cumulativeWork)}, residual ${formatResidual(decision.residual)}.`;
+}
+
+function activateDecision(lane: LaneId, index: number, focusMark = false): void {
+  const decision = currentTrack[lane].decisions[index];
+  if (!decision) return;
+  selectedDecision = { lane, decision };
+  rovingDecision = { lane, index };
+  pause();
+  fraction = workFraction(currentTrack, decision.cumulativeWork);
+  scrubber.value = String(Math.round(fraction * 1000));
+  updateRovingTabStops();
+  updateDecisionNavigation();
+  updatePosition();
+  renderInspector();
+  decisionLive.textContent = decisionAnnouncement(lane, decision);
+  if (focusMark) decisionMark(lane, index)?.focus();
+}
+
+function nearestDecisionIndex(lane: LaneId, cumulativeWork: number): number {
+  const decisions = currentTrack[lane].decisions;
+  let nearestIndex = 0;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  decisions.forEach((decision, index) => {
+    const distance = Math.abs(decision.cumulativeWork - cumulativeWork);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestIndex = index;
+    }
+  });
+  return nearestIndex;
+}
+
+function moveDecisionFocus(lane: LaneId, index: number): void {
+  previewDecision(lane, index);
+  decisionMark(lane, index)?.focus();
+}
+
+function handleDecisionKeydown(event: KeyboardEvent, lane: LaneId, index: number): void {
+  const decisions = currentTrack[lane].decisions;
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    activateDecision(lane, index, true);
+    return;
+  }
+
+  let targetLane = lane;
+  let targetIndex: number | null = null;
+  if (event.key === "ArrowLeft") targetIndex = Math.max(0, index - 1);
+  if (event.key === "ArrowRight") targetIndex = Math.min(decisions.length - 1, index + 1);
+  if (event.key === "Home") targetIndex = 0;
+  if (event.key === "End") targetIndex = decisions.length - 1;
+  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    targetLane = lane === "adaptive" ? "baseline" : "adaptive";
+    targetIndex = nearestDecisionIndex(targetLane, decisions[index]!.cumulativeWork);
+  }
+  if (targetIndex === null) return;
+  event.preventDefault();
+  moveDecisionFocus(targetLane, targetIndex);
 }
 
 function fieldPath(values: number[], x0 = 34, width = 932): string {
@@ -455,8 +584,9 @@ function probabilityMarkup(decision: RegretRadioDecisionV1): string {
     .join("");
 }
 
-function renderInspector(): void {
+function renderInspector(preview?: SelectedDecision): void {
   const chosen =
+    preview ??
     selectedDecision ??
     (() => {
       const decision = decisionAtFraction(currentTrack, currentTrack.adaptive, fraction);
@@ -507,7 +637,7 @@ function renderTrackOptions(): void {
   trackSelect.innerHTML = tracks
     .map(
       (track) =>
-        `<option value="${escapeHtml(track.id)}">${localTrackIds.has(track.id) ? "Local · " : ""}${escapeHtml(track.title)}</option>`,
+        `<option value="${escapeHtml(track.id)}">${localTrackIds.has(track.id) ? "Unverified local import · " : ""}${escapeHtml(track.title)}</option>`,
     )
     .join("");
   trackSelect.value = currentTrack.id;
@@ -556,7 +686,7 @@ function transmissionRowMarkup(row: TransmissionIndexRow): string {
           aria-label="${escapeHtml(`Open ${track.title} in player`)}"
         >
           <span>${escapeHtml(track.title)}</span>
-          <small class="index-source">${local ? "Local import" : "Bundled"} · study ${escapeHtml(source.studyId.slice(0, 8))}…</small>
+          <small class="index-source">${local ? "Unverified local import" : "Bundled"} · study ${escapeHtml(source.studyId.slice(0, 8))}…</small>
         </button>
       </th>
       <td>
@@ -578,17 +708,67 @@ function transmissionRowMarkup(row: TransmissionIndexRow): string {
     </tr>`;
 }
 
+function transmissionCardMarkup(row: TransmissionIndexRow): string {
+  const { track } = row;
+  const local = localTrackIds.has(track.id);
+  const source = sourceByTrack.get(track.id) ?? initialBundle.payload.source;
+  const current = track.id === currentTrack.id;
+  return `
+    <article class="transmission-card${current ? " is-current" : ""}" data-track-id="${escapeHtml(track.id)}" role="listitem">
+      <button
+        class="index-open transmission-card-open"
+        type="button"
+        data-track-id="${escapeHtml(track.id)}"
+        data-local="${local}"
+        aria-current="${current ? "true" : "false"}"
+        aria-label="${escapeHtml(`Open ${track.title} in player`)}"
+      >
+        <span>${escapeHtml(track.title)}</span>
+        <small class="index-source">${local ? "Unverified local import" : "Bundled"} · study ${escapeHtml(source.studyId.slice(0, 8))}…</small>
+      </button>
+      <dl class="transmission-card-facts">
+        <div class="transmission-card-fact">
+          <dt>Case</dt>
+          <dd><span class="index-case">${escapeHtml(row.family)}</span><small>${escapeHtml(row.startKind)}</small></dd>
+        </div>
+        <div class="transmission-card-fact">
+          <dt>Convergence</dt>
+          <dd class="index-lane-pair">
+            ${laneConvergenceMarkup("A", track.adaptive.converged, track.adaptive.terminalReason)}
+            ${laneConvergenceMarkup("SBS", track.baseline.converged, track.baseline.terminalReason)}
+          </dd>
+        </div>
+        <div class="transmission-card-fact">
+          <dt>Solver-path work</dt>
+          <dd class="index-work-pair">
+            ${workLaneMarkup("A", "adaptive-work", track.adaptive.solverPathWork, row.maxWork)}
+            ${workLaneMarkup("SBS", "baseline-work", track.baseline.solverPathWork, row.maxWork)}
+          </dd>
+        </div>
+        <div class="transmission-card-fact">
+          <dt>Switches</dt>
+          <dd class="index-switches">
+            <span><b>A</b> ${row.adaptiveSwitches}</span>
+            <span><b>SBS</b> ${row.baselineSwitches}</span>
+          </dd>
+        </div>
+      </dl>
+    </article>`;
+}
+
 function renderTransmissionIndex(): void {
   transmissionIndexCount.textContent = `${tracks.length} ${tracks.length === 1 ? "story" : "stories"}`;
-  transmissionIndexBody.innerHTML = buildTransmissionIndexRows(tracks)
-    .map(transmissionRowMarkup)
-    .join("");
-  transmissionIndexBody.querySelectorAll<HTMLButtonElement>(".index-open").forEach((button) => {
-    button.addEventListener("click", () => {
-      const selected = tracks.find((track) => track.id === button.dataset.trackId);
-      if (selected) selectTrack(selected, true);
+  const rows = buildTransmissionIndexRows(tracks);
+  transmissionIndexBody.innerHTML = rows.map(transmissionRowMarkup).join("");
+  transmissionIndexCards.innerHTML = rows.map(transmissionCardMarkup).join("");
+  for (const container of [transmissionIndexBody, transmissionIndexCards]) {
+    container.querySelectorAll<HTMLButtonElement>(".index-open").forEach((button) => {
+      button.addEventListener("click", () => {
+        const selected = tracks.find((track) => track.id === button.dataset.trackId);
+        if (selected) selectTrack(selected, true);
+      });
     });
-  });
+  }
 }
 
 function renderMuteControls(): void {
@@ -602,10 +782,13 @@ function renderMuteControls(): void {
 
 function renderTrack(): void {
   selectedDecision = null;
+  rovingDecision = { lane: "adaptive", index: 0 };
+  decisionLive.textContent = "";
   lastFieldKey = "";
   title.textContent = currentTrack.title;
   kicker.textContent = `${familyLabel(currentTrack.family)} · ${startKindLabel(currentTrack.startKind)}`;
-  story.textContent = outcomeLabel(currentTrack);
+  story.textContent = currentTrack.story;
+  outcome.textContent = outcomeLabel(currentTrack);
   caseStamp.innerHTML = `
     <span>instance ${escapeHtml(currentTrack.instanceId)}</span>
     <span>seed ${currentTrack.seed}</span>
@@ -618,11 +801,18 @@ function renderTrack(): void {
   renderTranscript();
   renderMuteControls();
   const source = sourceByTrack.get(currentTrack.id) ?? initialBundle.payload.source;
-  element<HTMLElement>("provenance-short").textContent = `Study ${source.studyId.slice(0, 10)}… · ${source.trainingTarget.replaceAll("_", " ")}`;
+  const local = localTrackIds.has(currentTrack.id);
+  provenanceHeading.textContent = local ? "Unverified local import" : "Accepted evidence";
+  provenanceStatus.textContent = local
+    ? "Loaded only in this tab. Its matching digest proves data consistency, not authorship."
+    : "Bundled evidence with a verified content digest.";
+  element<HTMLElement>("provenance-short").textContent = local
+    ? `Unverified local import · Study ${source.studyId.slice(0, 10)}…`
+    : `Study ${source.studyId.slice(0, 10)}… · ${source.trainingTarget.replaceAll("_", " ")}`;
   element<HTMLElement>("study-id").textContent = source.studyId;
   element<HTMLElement>("benchmark-digest").textContent = source.benchmarkEvidenceDigest;
   element<HTMLElement>("selector-run").textContent = source.selectorArtifactRunId;
-  shareButton.disabled = localTrackIds.has(currentTrack.id);
+  shareButton.disabled = local;
   updatePosition();
 }
 
@@ -666,14 +856,19 @@ function setStatus(message: string, error = false): void {
   status.classList.toggle("status-error", error);
 }
 
-function updateUrl(includePosition = true): void {
-  if (localTrackIds.has(currentTrack.id)) return;
-  const url = new URL(location.href);
-  url.searchParams.set("track", currentTrack.id);
+function buildStateUrl(includePosition = true): URL {
+  const url = new URL(location.pathname, location.origin);
+  if (!localTrackIds.has(currentTrack.id)) url.searchParams.set("track", currentTrack.id);
   url.searchParams.set("speed", String(speed));
   if (includePosition) url.searchParams.set("at", fraction.toFixed(2));
   url.searchParams.set("explain", explainDialog.open ? "1" : "0");
+  return url;
+}
+
+function updateUrl(includePosition = true): URL {
+  const url = buildStateUrl(includePosition);
   history.replaceState({}, "", url);
+  return url;
 }
 
 async function play(): Promise<void> {
@@ -759,6 +954,24 @@ trackSelect.addEventListener("change", () => {
   selectTrack(selected);
 });
 
+previousDecisionButton.addEventListener("click", () => {
+  const ordered = orderedDecisions();
+  const currentIndex = ordered.findIndex(
+    (item) => item.lane === rovingDecision.lane && item.index === rovingDecision.index,
+  );
+  const target = ordered[Math.max(0, currentIndex - 1)];
+  if (target) activateDecision(target.lane, target.index);
+});
+
+nextDecisionButton.addEventListener("click", () => {
+  const ordered = orderedDecisions();
+  const currentIndex = ordered.findIndex(
+    (item) => item.lane === rovingDecision.lane && item.index === rovingDecision.index,
+  );
+  const target = ordered[Math.min(ordered.length - 1, currentIndex + 1)];
+  if (target) activateDecision(target.lane, target.index);
+});
+
 for (const lane of ["adaptive", "baseline"] as const) {
   element<HTMLButtonElement>(`mute-${lane}`).addEventListener("click", async () => {
     if (explicitMuted.has(lane)) explicitMuted.delete(lane);
@@ -781,16 +994,16 @@ explainButton.addEventListener("click", () => {
 explainDialog.addEventListener("close", () => updateUrl());
 
 shareButton.addEventListener("click", async () => {
-  updateUrl();
+  const shareUrl = updateUrl();
   const canShare = typeof navigator.share === "function";
   const shareData = {
     title: `Regret Radio · ${currentTrack.title}`,
     text: currentTrack.story,
-    url: location.href,
+    url: shareUrl.href,
   };
   try {
     if (canShare) await navigator.share(shareData);
-    else await navigator.clipboard.writeText(location.href);
+    else await navigator.clipboard.writeText(shareUrl.href);
     setStatus(canShare ? "Share sheet opened." : "Share link copied.");
   } catch (error) {
     if ((error as DOMException).name !== "AbortError") setStatus("Could not share this link.", true);
@@ -821,7 +1034,9 @@ bundleFile.addEventListener("change", async () => {
   const file = bundleFile.files?.[0];
   if (!file) return;
   try {
-    const imported = await validateBundle(JSON.parse(await file.text()), {
+    if (file.size > MAX_BUNDLE_FILE_BYTES) throw new TypeError("file: maximum size is 10MB");
+    const sourceText = await file.text();
+    const imported = await validateBundle(JSON.parse(sourceText), {
       verifyDigest: true,
       sourceBytes: file.size,
     });
@@ -840,7 +1055,7 @@ bundleFile.addEventListener("change", async () => {
     renderTrackOptions();
     renderTrack();
     renderTransmissionIndex();
-    setStatus(`Loaded ${importedTracks.length} local track${importedTracks.length === 1 ? "" : "s"}. Local evidence is not put in the URL.`);
+    setStatus(`Loaded ${importedTracks.length} local track${importedTracks.length === 1 ? "" : "s"} as unverified local import${importedTracks.length === 1 ? "" : "s"}. The file stays in this tab and is not put in the URL.`);
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Could not read this bundle.", true);
   } finally {

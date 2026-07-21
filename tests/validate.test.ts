@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import rawBundle from "../src/data/bundle.json";
 import { sha256Hex, stableStringify } from "../src/canonical";
 import type { RegretRadioBundleV1 } from "../src/types";
-import { validateBundle } from "../src/validate";
+import { MAX_FIELD_VALUES, validateBundle } from "../src/validate";
 
 function cloneBundle(): RegretRadioBundleV1 {
   return structuredClone(rawBundle) as RegretRadioBundleV1;
@@ -66,5 +66,17 @@ describe("public bundle validation", () => {
     await expect(
       validateBundle(rawBundle, { sourceBytes: 10 * 1024 * 1024 + 1 }),
     ).rejects.toThrow("file: maximum size is 10MB");
+  });
+
+  test("rejects decision fields above the public import limit", async () => {
+    const bundle = cloneBundle();
+    bundle.payload.tracks[0]!.adaptive.decisions[0]!.field = Array.from(
+      { length: MAX_FIELD_VALUES + 1 },
+      (_, index) => index,
+    );
+
+    await expect(validateBundle(bundle, { verifyDigest: false })).rejects.toThrow(
+      `bundle.payload.tracks[0].adaptive.decisions[0].field: maximum is ${MAX_FIELD_VALUES.toLocaleString("en-US")} values`,
+    );
   });
 });

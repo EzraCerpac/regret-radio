@@ -5,15 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port ${PORT:-5173}",
+    "prebuild": "rm -rf dist",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port ${PORT:-4173}",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "playwright test",
+    "hosting:check": "bun tools/check-sites-build.ts",
     "fixture:export": "julia --project=tools/exporter tools/exporter/export.jl",
     "fixture:verify": "julia --project=tools/exporter tools/exporter/export.jl --verify",
-    "ci": "bun run typecheck && bun run test && bun run build && bun run test:browser",
-    "check": "bun run typecheck && bun run test && bun run build && bun run test:browser && bun run fixture:verify"
+    "ci": "bun run typecheck && bun run test && bun run build && bun run hosting:check && bun run test:browser",
+    "check": "bun run typecheck && bun run test && bun run build && bun run hosting:check && bun run test:browser && bun run fixture:verify"
   },
   "dependencies": {
     "@fontsource-variable/anybody": "5.2.7",
@@ -21,10 +23,12 @@
     "@fontsource/ibm-plex-sans": "5.2.8"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "1.37.1",
     "@playwright/test": "1.61.1",
     "@types/node": "24.10.1",
     "typescript": "5.9.3",
     "vite": "8.1.5",
-    "vitest": "4.1.10"
+    "vitest": "4.1.10",
+    "wrangler": "4.92.0"
   }
 }

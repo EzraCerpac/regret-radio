@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Anybody Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/anybody/files/anybody-latin-wght-normal.woff2") format("woff2-variations");
+}
+
 :root {
   color: #17242d;
   background: #dce4e8;
@@ -6,9 +14,9 @@
   --chassis: #dce4e8;
   --paper: #f5f7f7;
   --ink: #17242d;
-  --muted: #61717a;
+  --muted: #4f6069;
   --line: #9aaab3;
-  --brass: #a77d2f;
+  --brass: #7a5a1f;
   --gd: #2f6b8a;
   --lbfgs: #c7862d;
   --ncg: #6d5ca7;
@@ -19,10 +27,16 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+  overflow-x: clip;
   background:
     radial-gradient(circle at 12% 2%, rgb(255 255 255 / 0.62), transparent 30rem),
     linear-gradient(135deg, #e5ebee 0%, var(--chassis) 44%, #ccd8de 100%);
@@ -45,6 +59,7 @@ button:focus-visible,
 select:focus-visible,
 summary:focus-visible,
 input:focus-visible,
+.skip-link:focus-visible,
 .decision-mark:focus-visible,
 .index-open:focus-visible,
 #track-title:focus-visible {
@@ -53,10 +68,37 @@ input:focus-visible,
   box-shadow: 0 0 0 5px var(--ink);
 }
 
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  min-height: 44px;
+  padding: 11px 15px;
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: 4px;
+  transform: translateY(calc(-100% - 20px));
+  transition: transform 120ms ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 .app-shell {
   width: min(1180px, calc(100% - 32px));
+  min-width: 0;
   margin: 0 auto;
   padding: 24px 0 32px;
+}
+
+main,
+.hero,
+.instrument,
+.transmission-index {
+  min-width: 0;
 }
 
 .masthead {
@@ -132,6 +174,7 @@ input:focus-visible,
 }
 
 .select {
+  max-width: 100%;
   min-height: 44px;
   padding: 0 38px 0 13px;
   color: var(--ink);
@@ -172,6 +215,16 @@ input:focus-visible,
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.player-orientation {
+  max-width: 760px;
+  margin: 0 0 26px;
+  padding-left: 13px;
+  color: var(--muted);
+  border-left: 2px solid var(--brass);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .button-play {
@@ -241,6 +294,10 @@ input:focus-visible,
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+}
+
+.transmission-index-cards {
+  display: none;
 }
 
 .transmission-table {
@@ -416,7 +473,7 @@ input:focus-visible,
 }
 
 .hero {
-  padding: 42px 0 18px;
+  padding: 32px 0 18px;
 }
 
 .track-heading {
@@ -461,6 +518,39 @@ h3 {
   max-width: 760px;
   margin-bottom: 0;
   font-size: clamp(1.05rem, 2vw, 1.35rem);
+  line-height: 1.4;
+}
+
+.track-narrative {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: 18px;
+  max-width: 860px;
+  margin-top: 18px;
+}
+
+.track-narrative .story {
+  font-size: clamp(1rem, 1.7vw, 1.2rem);
+}
+
+.track-outcome {
+  max-width: 760px;
+  margin: 0;
+  padding-left: 13px;
+  color: var(--muted);
+  border-left: 2px solid var(--brass);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.narrative-label {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--brass);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .case-stamp {
@@ -513,8 +603,9 @@ h3 {
 }
 
 .mini-button {
-  min-height: 30px;
-  padding: 0 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.68rem;
   text-transform: uppercase;
@@ -716,6 +807,31 @@ h3 {
   font-size: 0.8rem;
 }
 
+.decision-navigation {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgb(23 36 45 / 0.16);
+}
+
+.decision-navigation button,
+.decision-nav-button {
+  min-height: 44px;
+}
+
+.decision-navigation-label {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .probabilities {
   display: grid;
   align-content: center;
@@ -849,10 +965,30 @@ h3 {
   font-size: 0.7rem;
 }
 
+.transcript li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .import-row {
   padding: 0 0 18px;
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+.import-copy {
+  flex: 1 1 360px;
+  max-width: 760px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.import-copy p {
+  margin: 0;
+}
+
+.import-copy p + p {
+  margin-top: 4px;
 }
 
 #bundle-file {
@@ -874,6 +1010,17 @@ h3 {
 
 .footer p {
   margin-bottom: 0;
+}
+
+.footer a {
+  color: inherit;
+  font-weight: 500;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.footer a:hover {
+  color: var(--ink);
 }
 
 .explain-dialog {
@@ -946,6 +1093,16 @@ h3 {
   padding: 24px;
 }
 
+.provenance-status {
+  margin: -2px 0 18px;
+  padding: 9px 12px;
+  color: var(--muted);
+  background: rgb(122 90 31 / 0.08);
+  border-left: 2px solid var(--brass);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 .provenance-block dl {
   display: grid;
   gap: 8px;
@@ -997,6 +1154,19 @@ h3 {
     display: flex;
   }
 
+  .hero {
+    padding-top: 24px;
+  }
+
+  .player-orientation {
+    margin-bottom: 22px;
+  }
+
+  .track-narrative {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
   .head-controls {
     display: grid;
     grid-template-columns: 1fr;
@@ -1013,8 +1183,93 @@ h3 {
     gap: 6px;
   }
 
-  .transmission-table {
-    min-width: 860px;
+  .transmission-index-scroll {
+    display: none;
+  }
+
+  .transmission-index-cards {
+    display: grid;
+    gap: 10px;
+    padding-bottom: 16px;
+  }
+
+  .transmission-card {
+    min-width: 0;
+    overflow: hidden;
+    background: rgb(245 247 247 / 0.58);
+    border: 1px solid rgb(23 36 45 / 0.2);
+    border-radius: 6px;
+  }
+
+  .transmission-card.is-current {
+    border-color: var(--brass);
+    box-shadow: inset 3px 0 var(--brass);
+  }
+
+  .transmission-card .index-open {
+    min-height: 52px;
+    padding: 11px 13px;
+    border-bottom: 1px solid rgb(23 36 45 / 0.12);
+  }
+
+  .transmission-card dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+  }
+
+  .transmission-card dl > div {
+    min-width: 0;
+    padding: 11px 13px;
+    border-top: 1px solid rgb(23 36 45 / 0.1);
+  }
+
+  .transmission-card dl > div:nth-child(odd) {
+    border-right: 1px solid rgb(23 36 45 / 0.1);
+  }
+
+  .transmission-card dt {
+    display: block;
+    margin: 0 0 6px;
+    color: var(--muted);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.64rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .transmission-card dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    line-height: 1.5;
+  }
+
+  .transmission-card .index-lane-status,
+  .transmission-card .index-work-lane {
+    min-width: 0;
+  }
+
+  .transmission-card .index-work-lane {
+    grid-template-columns: 30px minmax(58px, auto) minmax(24px, 1fr);
+  }
+
+  .transmission-card dd small {
+    display: block;
+    color: var(--muted);
+    font-size: 0.65rem;
+  }
+
+  .transmission-card .index-switches span {
+    display: block;
+  }
+
+  .transmission-card .index-switches span + span {
+    margin-top: 5px;
   }
 
   .select-label {
@@ -1043,6 +1298,10 @@ h3 {
     width: 100%;
   }
 
+  .lane-tool .mini-button:first-of-type {
+    margin-left: auto;
+  }
+
   .score {
     min-height: 0;
   }
@@ -1054,6 +1313,27 @@ h3 {
   .inspector {
     grid-template-columns: 1fr;
     min-height: 260px;
+  }
+
+  .decision-navigation {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    padding: 12px 14px;
+  }
+
+  .decision-navigation-label {
+    grid-row: 1;
+    grid-column: 1 / -1;
+  }
+
+  .decision-navigation button:first-of-type {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .decision-navigation button:last-of-type {
+    grid-row: 2;
+    grid-column: 2;
   }
 
   .transport {
@@ -1069,11 +1349,10 @@ h3 {
   }
 
   .transcript li {
-    grid-template-columns: 74px 60px 1fr;
-  }
-
-  .transcript li > :last-child {
-    display: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 12px;
+    padding-top: 9px;
+    padding-bottom: 9px;
   }
 
   .footer {
