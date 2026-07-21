@@ -22,7 +22,7 @@ export default defineConfig(async () => {
         config: {
           name: "server",
           main: "./worker/index.ts",
-          compatibility_date: "2026-07-21",
+          compatibility_date: "2026-05-15",
           assets: {
             binding: "ASSETS",
             html_handling: "none",
