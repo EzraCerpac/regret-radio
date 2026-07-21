@@ -25,6 +25,7 @@ export default defineConfig(async () => {
           compatibility_date: "2026-07-21",
           assets: {
             binding: "ASSETS",
+            html_handling: "none",
             not_found_handling: "none",
           },
         },
