@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/EzraCerpac/regret-radio/actions/workflows/ci.yml/badge.svg)](https://github.com/EzraCerpac/regret-radio/actions/workflows/ci.yml)
 
+**[Open Regret Radio](https://regret-radio.e-cerpac.chatgpt.site/)**
+
 Regret Radio is a static scientific web toy: two accepted optimization traces
 share one solver-work timeline, while a deterministic synthesizer turns each
 recorded decision into sound. It compares a one-switch-trained adaptive selector
